@@ -1,0 +1,82 @@
+name: Build and Release
+
+# Build the portable Windows .exe and a portable zip, then publish them
+# to a GitHub Release.
+#
+# How to trigger:
+#   - Push a tag like v1.0.0   ->  builds + creates a release for that tag
+#   - Or run manually from the Actions tab (workflow_dispatch)
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Release tag (e.g. v1.0.0). Used when run manually."
+        required: false
+        default: ""
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r requirements.txt pyinstaller
+
+      - name: Build GUI executable (onedir for fast startup)
+        run: >
+          pyinstaller --noconfirm --onedir --windowed --name oci-arm-auto-gui
+          --collect-all oci
+          --collect-all certifi
+          gui.py
+
+      - name: Build CLI executable
+        run: >
+          pyinstaller --noconfirm --onefile --name oci-arm-auto
+          --collect-all oci
+          --collect-all certifi
+          create_instance.py
+
+      - name: Assemble portable package
+        shell: pwsh
+        run: |
+          $pkg = "oci-arm-auto-portable"
+          New-Item -ItemType Directory -Force -Path "$pkg/logs" | Out-Null
+          # GUI is a onedir build: copy the exe AND its _internal folder
+          Copy-Item "dist/oci-arm-auto-gui/*" "$pkg/" -Recurse -Force
+          # CLI is a single file
+          Copy-Item "dist/oci-arm-auto.exe" "$pkg/"
+          Copy-Item "config.example.json" "$pkg/"
+          Copy-Item "setup.bat" "$pkg/"
+          Copy-Item "run.bat" "$pkg/"
+          Copy-Item "README.md" "$pkg/"
+          New-Item -ItemType File -Force -Path "$pkg/logs/.gitkeep" | Out-Null
+          Compress-Archive -Path "$pkg/*" -DestinationPath "oci-arm-auto-portable.zip" -Force
+
+      - name: Publish GitHub Release
+        if: startsWith(github.ref, 'refs/tags/') || inputs.tag != ''
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ inputs.tag != '' && inputs.tag || github.ref_name }}
+          name: ${{ inputs.tag != '' && inputs.tag || github.ref_name }}
+          generate_release_notes: true
+          files: |
+            dist/oci-arm-auto.exe
+            oci-arm-auto-portable.zip
