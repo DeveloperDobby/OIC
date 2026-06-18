@@ -38,9 +38,9 @@ concurrency:
 jobs:
   launch:
     runs-on: ubuntu-latest
-    # GitHub kills any job at 6h (360 min). Stay safely under that so the
+    # GitHub kills any job at 6h (360 min). Stay just under that so the
     # run ends cleanly and the next scheduled run can take over.
-    timeout-minutes: 350
+    timeout-minutes: 359
 
     steps:
       - name: Checkout
@@ -52,16 +52,17 @@ jobs:
           python-version: "3.12"
 
       - name: Install dependencies
+        # Quiet install; suppress all output (public Action logs).
         run: |
-          python -m pip install --upgrade pip
-          python -m pip install -r requirements.txt
+          python -m pip install --quiet --upgrade pip >/dev/null 2>&1
+          python -m pip install --quiet -r requirements.txt >/dev/null 2>&1
 
       - name: Write config.json from secret
         env:
           CONFIG_JSON: ${{ secrets.CONFIG_JSON }}
         run: |
           if [ -z "${CONFIG_JSON}" ]; then
-            echo "::error::CONFIG_JSON secret is not set. Add it under Settings > Secrets and variables > Actions."
+            echo "::error::CONFIG_JSON secret is not set."
             exit 1
           fi
           # %s does not interpret backslash escapes, so JSON stays intact.
@@ -72,7 +73,11 @@ jobs:
           DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
           DISCORD_USER_ID: ${{ secrets.DISCORD_USER_ID }}
         # No --once: retries follow config.json (request_interval / max_attempts).
-        run: python create_instance.py
+        # Suppress all stdout/stderr so nothing (account IDs, OCIDs, instance
+        # IDs, errors) is ever printed to the public Action log. Status is
+        # delivered via Discord instead. The 2>/dev/null also hides crashes;
+        # the step's exit code still reflects success/failure.
+        run: python create_instance.py >/dev/null 2>&1
 
       - name: Remove config.json
         if: always()
