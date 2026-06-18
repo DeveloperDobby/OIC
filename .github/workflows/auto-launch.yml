@@ -1,10 +1,18 @@
 name: OCI ARM Auto Launch
 
-# Tries to launch the configured OCI ARM instance(s) once per run.
+# Launches the configured OCI ARM instance(s), retrying according to the
+# config's own request_interval / max_attempts within each run.
 #
 # Triggers:
-#   - schedule:           every 6 hours (the retry cadence)
+#   - schedule:           restarts the run roughly every 6 hours, so retries
+#                         continue across GitHub's 6-hour per-job limit
 #   - workflow_dispatch:  manual run from the Actions tab
+#
+# Retry behavior is driven entirely by config.json:
+#   - request_interval    seconds to sleep between cycles (your setting)
+#   - max_attempts        0 = retry until success; N = stop after N cycles
+# The job timeout below keeps a single run safely under GitHub's 6h cap;
+# the schedule then starts a fresh run.
 #
 # All credentials are injected at runtime from GitHub Secrets and are never
 # committed to the repository:
@@ -30,7 +38,9 @@ concurrency:
 jobs:
   launch:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    # GitHub kills any job at 6h (360 min). Stay safely under that so the
+    # run ends cleanly and the next scheduled run can take over.
+    timeout-minutes: 350
 
     steps:
       - name: Checkout
@@ -57,11 +67,12 @@ jobs:
           # %s does not interpret backslash escapes, so JSON stays intact.
           printf '%s' "${CONFIG_JSON}" > config.json
 
-      - name: Run launcher (single cycle)
+      - name: Run launcher
         env:
           DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
           DISCORD_USER_ID: ${{ secrets.DISCORD_USER_ID }}
-        run: python create_instance.py --once
+        # No --once: retries follow config.json (request_interval / max_attempts).
+        run: python create_instance.py
 
       - name: Remove config.json
         if: always()
