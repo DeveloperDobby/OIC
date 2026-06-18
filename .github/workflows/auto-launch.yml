@@ -26,14 +26,15 @@ on:
     - cron: "0 */6 * * *"
   workflow_dispatch:
 
-# Least-privilege: this workflow only needs to read the repo contents.
+# Least privilege: read repo contents, and write to Actions so this run can
+# cancel previously running runs of this workflow before it launches.
 permissions:
   contents: read
+  actions: write
 
-# Never run two launch attempts at the same time.
-concurrency:
-  group: oci-arm-auto-launch
-  cancel-in-progress: false
+# No blocking concurrency group on purpose: a new run must be allowed to
+# start immediately so its "Cancel previously running workflow runs" step
+# can terminate any older run that is still going. The newest run wins.
 
 jobs:
   launch:
@@ -67,6 +68,30 @@ jobs:
           fi
           # %s does not interpret backslash escapes, so JSON stays intact.
           printf '%s' "${CONFIG_JSON}" > config.json
+
+      - name: Cancel previously running workflow runs
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          CURRENT_RUN_ID: ${{ github.run_id }}
+        # Before launching, check for other runs of THIS workflow that are
+        # still active. Older runs have a smaller run id than the current run.
+        #   - none active  -> no-op, continue
+        #   - some active  -> cancel them all, wait until they stop, continue
+        # Output is suppressed (only run metadata anyway).
+        run: |
+          query="repos/${REPO}/actions/workflows/auto-launch.yml/runs?per_page=100"
+          jq_filter=".workflow_runs[] | select(.status != \"completed\") | select(.id < ${CURRENT_RUN_ID}) | .id"
+          older=$(gh api "${query}" --jq "${jq_filter}" 2>/dev/null || true)
+          for id in ${older}; do
+            gh api -X POST "repos/${REPO}/actions/runs/${id}/cancel" >/dev/null 2>&1 || true
+          done
+          # Best-effort wait (up to ~60s) until older runs have actually stopped.
+          for _ in $(seq 1 12); do
+            remaining=$(gh api "${query}" --jq "${jq_filter}" 2>/dev/null | grep -c . || true)
+            [ "${remaining:-0}" -eq 0 ] && break
+            sleep 5
+          done
 
       - name: Run launcher
         env:
