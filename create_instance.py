@@ -39,7 +39,7 @@ def load_or_create(config_path: str, log) -> dict:
 
     log(
         f"No config found at {config_path}. A template was created; "
-        "edit it (or use the GUI) and run again."
+        "fill it in and run again."
     )
     app_config.save_config(app_config.default_config(), config_path)
     return app_config.load_config(config_path)

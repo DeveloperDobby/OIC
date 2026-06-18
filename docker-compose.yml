@@ -1,9 +1,0 @@
-services:
-  oci-arm-auto:
-    build: .
-    container_name: oci-arm-auto
-    restart: unless-stopped
-    volumes:
-      # All settings (accounts, keys) live in config.json
-      - ./config.json:/app/config.json:ro
-      - ./logs:/app/logs
