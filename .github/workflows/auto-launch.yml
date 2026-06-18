@@ -1,0 +1,68 @@
+name: OCI ARM Auto Launch
+
+# Tries to launch the configured OCI ARM instance(s) once per run.
+#
+# Triggers:
+#   - schedule:           every 6 hours (the retry cadence)
+#   - workflow_dispatch:  manual run from the Actions tab
+#
+# All credentials are injected at runtime from GitHub Secrets and are never
+# committed to the repository:
+#   - CONFIG_JSON           full config.json content (accounts, OCI keys, ...)
+#   - DISCORD_WEBHOOK_URL    (optional) Discord webhook for notifications
+#   - DISCORD_USER_ID        (optional) Discord user ID to mention
+
+on:
+  schedule:
+    # 00:00, 06:00, 12:00, 18:00 UTC
+    - cron: "0 */6 * * *"
+  workflow_dispatch:
+
+# Least-privilege: this workflow only needs to read the repo contents.
+permissions:
+  contents: read
+
+# Never run two launch attempts at the same time.
+concurrency:
+  group: oci-arm-auto-launch
+  cancel-in-progress: false
+
+jobs:
+  launch:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r requirements.txt
+
+      - name: Write config.json from secret
+        env:
+          CONFIG_JSON: ${{ secrets.CONFIG_JSON }}
+        run: |
+          if [ -z "${CONFIG_JSON}" ]; then
+            echo "::error::CONFIG_JSON secret is not set. Add it under Settings > Secrets and variables > Actions."
+            exit 1
+          fi
+          # %s does not interpret backslash escapes, so JSON stays intact.
+          printf '%s' "${CONFIG_JSON}" > config.json
+
+      - name: Run launcher (single cycle)
+        env:
+          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+          DISCORD_USER_ID: ${{ secrets.DISCORD_USER_ID }}
+        run: python create_instance.py --once
+
+      - name: Remove config.json
+        if: always()
+        run: rm -f config.json
