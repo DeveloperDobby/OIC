@@ -1,0 +1,41 @@
+name: Keepalive
+
+# Keeps the repository "active" so GitHub does not auto-disable the scheduled
+# workflows. GitHub pauses a repo's `schedule` triggers after 60 days without
+# any repository activity (e.g. commits). This workflow pushes a tiny empty
+# commit every 14 days, which counts as activity and resets that 60-day timer,
+# ensuring auto-launch.yml's cron keeps firing indefinitely.
+#
+# The empty commit changes no files, so it has no effect on the codebase.
+
+on:
+  schedule:
+    # Every 14 days at 03:30 UTC. Minute is offset from :00 to avoid the
+    # heavily congested top-of-hour scheduling slots.
+    - cron: "30 3 */14 * *"
+  workflow_dispatch:
+
+# Need write access to push the empty commit back to the repository.
+permissions:
+  contents: write
+
+# Only one keepalive run at a time; cancel any older queued/running one.
+concurrency:
+  group: keepalive
+  cancel-in-progress: true
+
+jobs:
+  keepalive:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Push empty commit to keep schedules active
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit --allow-empty -m "chore: keepalive [skip ci]"
+          git push
