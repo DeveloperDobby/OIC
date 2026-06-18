@@ -1,0 +1,51 @@
+{
+  "request_interval": 1800,
+  "max_attempts": 0,
+  "discord_webhook_url": "",
+  "discord_user_id": "",
+  "discord_notify_capacity": true,
+  "accounts": [
+    {
+      "name": "account-1",
+      "enabled": true,
+      "region": "ap-chuncheon-1",
+      "user_ocid": "ocid1.user.oc1..EXAMPLE",
+      "fingerprint": "aa:bb:cc:dd:ee:ff:00:11:22:33:44:55:66:77:88:99",
+      "tenancy_ocid": "ocid1.tenancy.oc1..EXAMPLE",
+      "compartment_ocid": "",
+      "image_id": "ocid1.image.oc1.ap-chuncheon-1.EXAMPLE",
+      "subnet_id": "ocid1.subnet.oc1.ap-chuncheon-1.EXAMPLE",
+      "availability_domain": "EizN:AP-CHUNCHEON-1-AD-1",
+      "ssh_public_key": "ssh-rsa AAAA... user@example",
+      "private_key": "-----BEGIN PRIVATE KEY-----\nPASTE_YOUR_API_PRIVATE_KEY_HERE\n-----END PRIVATE KEY-----",
+      "display_name": "big-arm-1",
+      "shape": "VM.Standard.A1.Flex",
+      "ocpus": 4,
+      "memory_gb": 24,
+      "boot_volume_gb": 150,
+      "boot_volume_vpus_per_gb": 10,
+      "assign_public_ip": true
+    },
+    {
+      "name": "account-2",
+      "enabled": true,
+      "region": "ap-chuncheon-1",
+      "user_ocid": "ocid1.user.oc1..EXAMPLE2",
+      "fingerprint": "11:22:33:44:55:66:77:88:99:aa:bb:cc:dd:ee:ff:00",
+      "tenancy_ocid": "ocid1.tenancy.oc1..EXAMPLE2",
+      "compartment_ocid": "",
+      "image_id": "ocid1.image.oc1.ap-chuncheon-1.EXAMPLE2",
+      "subnet_id": "ocid1.subnet.oc1.ap-chuncheon-1.EXAMPLE2",
+      "availability_domain": "EizN:AP-CHUNCHEON-1-AD-1",
+      "ssh_public_key": "ssh-ed25519 AAAA... user@example",
+      "private_key": "-----BEGIN PRIVATE KEY-----\nPASTE_YOUR_API_PRIVATE_KEY_HERE\n-----END PRIVATE KEY-----",
+      "display_name": "big-arm-2",
+      "shape": "VM.Standard.A1.Flex",
+      "ocpus": 4,
+      "memory_gb": 24,
+      "boot_volume_gb": 150,
+      "boot_volume_vpus_per_gb": 10,
+      "assign_public_ip": true
+    }
+  ]
+}

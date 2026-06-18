@@ -1,0 +1,18 @@
+# Real config holds OCI credentials and private keys - never commit it
+config.json
+
+# Logs
+logs/*
+!logs/.gitkeep
+
+# Python
+__pycache__/
+*.pyc
+
+# PyInstaller / build artifacts
+build/
+dist/
+*.spec
+*.exe
+oci-arm-auto-portable/
+oci-arm-auto-portable.zip
